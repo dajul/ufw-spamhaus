@@ -24,7 +24,7 @@ echo " "
 echo "Extract DROP IP addresses and add to UFW:"
 cat $DROP_ADD_TO_UFW | while read line
 do
-/usr/sbin/ufw insert 1 deny from "$line" comment "DROP_Blacklisted_IPs $EXEC_DATE"
+/usr/sbin/ufw prepend deny from "$line" comment "DROP_Blacklisted_IPs $EXEC_DATE"
 done
 echo " "
 echo "Downloading eDROP list and import to UFW"
@@ -36,7 +36,7 @@ echo " "
 echo "Extract eDROP IP addresses and add to UFW:"
 cat $eDROP_ADD_TO_UFW | while read line
 do
-/usr/sbin/ufw insert 1 deny from "$line" comment "eDROP_Blacklisted_IPs $EXEC_DATE"
+/usr/sbin/ufw prepend deny from "$line" comment "eDROP_Blacklisted_IPs $EXEC_DATE"
 done
 echo " "
 echo "Downloading v6DROP list and import to UFW"
@@ -48,7 +48,7 @@ echo " "
 echo "Extract v6DROP IP addresses and add to UFW:"
 cat $v6DROP_ADD_TO_UFW | while read line
 do
-/usr/sbin/ufw insert 1 deny from "$line" comment "v6DROP_Blacklisted_IPs $EXEC_DATE"
+/usr/sbin/ufw prepend deny from "$line" comment "v6DROP_Blacklisted_IPs $EXEC_DATE"
 done
 
 echo " "

@@ -1,69 +1,69 @@
-#!/usr/bin/env bash
+#!/bin/bash
+# Thanks to @ank0m
+EXEC_DATE=`date +%Y-%m-%d`
+SPAMHAUS_DROP="/usr/local/src/drop.txt"
+SPAMHAUS_eDROP="/usr/local/src/edrop.txt"
+SPAMHAUS_v6DROP="/usr/local/src/v6drop.txt"
+URL="https://www.spamhaus.org/drop/drop.txt"
+eURL="https://www.spamhaus.org/drop/edrop.txt"
+v6URL="https://www.spamhaus.org/drop/dropv6.txt"
+DROP_ADD_TO_UFW="/usr/local/src/DROP2.txt"
+eDROP_ADD_TO_UFW="/usr/local/src/eDROP2.txt"
+v6DROP_ADD_TO_UFW="/usr/local/src/v6DROP.txt"
+DROP_ARCHIVE_FILE="/usr/local/src/DROP_$EXEC_DATE"
+eDROP_ARCHIVE_FILE="/usr/local/src/eDROP_$EXEC_DATE"
+v6DROP_ARCHIVE_FILE="/usr/local/src/v6DROP_$EXEC_DATE"
 
-# based off the following script
-# https://github.com/cowgill/spamhaus
-# https://github.com/dajul/ufw-spamhaus
-# https://joshtronic.com/2015/09/06/error-invalid-position-1/
-
-# list of known spammers
-URL1="http://www.spamhaus.org/drop/drop.lasso";
-URL2="http://www.spamhaus.org/drop/edrop.lasso";
-
-# save local copy here
-FILE1="/tmp/drop.lasso";
-FILE2="/tmp/edrop.lasso";
-COMBINED="/tmp/drop-edrop.combined"
-
-# unban old entries
-if [ -f $COMBINED ]; then
-    for IP in $( cat $COMBINED ); do
-        ufw delete deny from $IP to any
-    done
-fi
-
-# get a copy of the spam lists
-wget -qc $URL1 -O $FILE1
-if [ $? -ne 0 ]; then
-    exit 1
-fi
-wget -qc $URL2 -O $FILE2
-if [ $? -ne 0 ]; then
-    exit 1
-fi
-
-# combine files and filter
-cat $FILE1 <(echo -n) $FILE2 | egrep -v '^;' | awk '{ print $1}' > $COMBINED
-
-# remove the spam lists
-unlink $FILE1
-unlink $FILE2
-
-# ban new entries
-for IP in $( cat $COMBINED ); do
-    ufw insert 1 deny from $IP to any
+# All credits for the following BLACKLISTS goes to "The Spamhaus Project" - https://www.spamhaus.org
+echo "Start time: $(date)"
+echo " "
+echo "Download daily DROP file:"
+wget -q -O - "$URL" > $SPAMHAUS_DROP
+grep -v '^;' $SPAMHAUS_DROP | cut -d ' ' -f 1 > $DROP_ADD_TO_UFW
+echo " "
+echo "Extract DROP IP addresses and add to UFW:"
+cat $DROP_ADD_TO_UFW | while read line
+do
+/usr/sbin/ufw insert 1 deny from "$line" comment "DROP_Blacklisted_IPs $EXEC_DATE"
+done
+echo " "
+echo "Downloading eDROP list and import to UFW"
+echo " "
+echo "Download daily eDROP file:"
+wget -q -O - "$eURL" > $SPAMHAUS_eDROP
+grep -v '^;' $SPAMHAUS_eDROP | cut -d ' ' -f 1 > $eDROP_ADD_TO_UFW
+echo " "
+echo "Extract eDROP IP addresses and add to UFW:"
+cat $eDROP_ADD_TO_UFW | while read line
+do
+/usr/sbin/ufw insert 1 deny from "$line" comment "eDROP_Blacklisted_IPs $EXEC_DATE"
+done
+echo " "
+echo "Downloading v6DROP list and import to UFW"
+echo " "
+echo "Download daily v6DROP file:"
+wget -q -O - "$v6URL" > $SPAMHAUS_v6DROP
+grep -v '^;' $SPAMHAUS_v6DROP | cut -d ' ' -f 1 > $v6DROP_ADD_TO_UFW
+echo " "
+echo "Extract v6DROP IP addresses and add to UFW:"
+cat $v6DROP_ADD_TO_UFW | while read line
+do
+/usr/sbin/ufw insert 1 deny from "$line" comment "v6DROP_Blacklisted_IPs $EXEC_DATE"
 done
 
-# list of known spammers v6
-URL3="https://www.spamhaus.org/drop/dropv6.txt";
-# save local copy here
-FILE3="/tmp/dropv6.lasso";
-
-# unban old entries v6
-if [ -f $FILE3 ]; then
-    for IP in $( cat $FILE3 ); do
-        ufw delete deny from $IP to any
-    done
-fi
-
-# get a copy of the spam lists v6
-wget -qc $URL3 -O $FILE3
-if [ $? -ne 0 ]; then
-    exit 1
-fi
-
-# ban new entries
-# check first position of first v6 entry
-v6ruleid=$(ufw status numbered | grep "(v6)" | grep -o "\\[[0-9]*\\]" | grep -o "[0-9]*" | head -n 1)
-for IP in $( cat $FILE3 ); do
-    ufw insert $v6ruleid deny from $IP to any
-done
+echo " "
+#####
+## To remove or revert these rules, keep the list of IPs!
+## Run a command like so to remove the rules:
+# while read line; do ufw delete deny from $line; done < $ARCHIVE_FILE
+#####
+echo "Backup DROP IP address list:"
+mv $DROP_ADD_TO_UFW $DROP_ARCHIVE_FILE
+echo " "
+echo "Backup eDROP IP address list:"
+mv $eDROP_ADD_TO_UFW $eDROP_ARCHIVE_FILE
+echo " "
+echo "Backup v6DROP IP address list:"
+mv $v6DROP_ADD_TO_UFW $v6DROP_ARCHIVE_FILE
+echo " "
+echo End time: $(date)
